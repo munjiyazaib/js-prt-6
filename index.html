@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live IPL Scoreboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f4f4f4;
+            padding: 20px;
+        }
+        #scoreboard {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            display: inline-block;
+        }
+        .score {
+            margin: 10px 0;
+            padding: 10px;
+            background: #e3e3e3;
+            border-radius: 5px;
+        }
+        .team {
+            font-weight: bold;
+        }
+        .players {
+            font-size: 14px;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <h1>Live IPL Scoreboard</h1>
+    <button onclick="updateScores()">Get IPL Scores</button>
+    
+    <div id="scoreboard"></div>
+    
+    <script>
+        function fetchLiveScores(callback) {
+            console.log("Fetching live IPL scores...");
+            
+            const apiUrl = "https://ipl-okn0.onrender.com/ipl-2025-live-score";
+            
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    console.log("API Response:", data);
+                    const matches = data.live_score ? Object.values(data.live_score) : [];
+                    callback(matches);
+                })
+                .catch(error => {
+                    console.error("Error fetching IPL scores:", error);
+                    callback([]);
+                });
+        }
+
+        function displayScores(scores) {
+            const scoreboard = document.getElementById("scoreboard");
+            scoreboard.innerHTML = "";
+            
+            const now = new Date();
+            const currentHour = now.getHours();
+            const today = now.toISOString().split('T')[0];
+            
+            const nightMatches = scores.filter(game => {
+                return game.MatchDate === today && game.MatchTime >= "18:00"; // Filtering night matches
+            });
+            
+            if (nightMatches.length === 0) {
+                scoreboard.innerHTML = "<p>No live night matches currently. Upcoming teams:</p>";
+                fetchUpcomingMatches();
+                return;
+            }
+            
+            nightMatches.forEach(game => {
+                const div = document.createElement("div");
+                div.className = "score";
+                div.innerHTML = `
+                    <div class="team">${game.Team1} vs ${game.Team2}</div>
+                    <div>Match Time: ${game.MatchTime}</div>
+                    <div>Score: ${game['1st innings'] || ''} - ${game['2nd innings'] || ''} (CR: ${game.CR || 'N/A'}, RR: ${game.RR || 'N/A'})</div>
+                    <div class="players"><strong>${game.Team1} Squad:</strong> ${game.Team1Players ? game.Team1Players.join(', ') : 'Not available'}</div>
+                    <div class="players"><strong>${game.Team2} Squad:</strong> ${game.Team2Players ? game.Team2Players.join(', ') : 'Not available'}</div>
+                `;
+                scoreboard.appendChild(div);
+            });
+        }
+
+        function fetchUpcomingMatches() {
+            const apiUrl = "https://ipl-okn0.onrender.com/ipl-2025-matches";
+            
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    console.log("Upcoming Matches API Response:", data);
+                    const scoreboard = document.getElementById("scoreboard");
+                    data.matches.forEach(match => {
+                        const div = document.createElement("div");
+                        div.className = "score";
+                        div.innerHTML = `
+                            <div class="team">${match.Team1} vs ${match.Team2}</div>
+                            <div>Match Time: ${match.MatchTime}</div>
+                            <div>Date: ${match.Date}</div>
+                            <div class="players"><strong>${match.Team1} Squad:</strong> ${match.Team1Players ? match.Team1Players.join(', ') : 'Not available'}</div>
+                            <div class="players"><strong>${match.Team2} Squad:</strong> ${match.Team2Players ? match.Team2Players.join(', ') : 'Not available'}</div>
+                        `;
+                        scoreboard.appendChild(div);
+                    });
+                })
+                .catch(error => console.error("Error fetching upcoming matches:", error));
+        }
+
+        function updateScores() {
+            fetchLiveScores(displayScores);
+        }
+    </script>
+</body>
+</html>
